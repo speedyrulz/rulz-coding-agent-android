@@ -36,8 +36,17 @@ The app remembers the computer and reconnects by itself, also after the phone sl
   for you: a permission request, a question or a pause. Tap one to go to the project. They come only while the app
   isn't on screen, and a waiting notification disappears once it's answered, here or on the computer. To get them
   while the app is closed, **Stay connected in the background** keeps the connection open, which Android shows as a
-  small ongoing notification; while a task runs, the phone also stays awake so messages arrive right away. If they
-  stop after the phone has been locked a while, use **Battery settings** to let the app run without battery limits.
+  small ongoing notification that says what the agent is doing (working, waiting for your OK, a question, paused);
+  while a task runs, the phone also stays awake so messages arrive right away. If they stop after the phone has been
+  locked a while, use **Battery settings** to let the app run without battery limits. Settings explains why
+  notifications can't show, if Android blocks them, and shows the last one sent.
+- **Model quick switch**: tap the model under the project name to switch models (not during a task), with a shortcut to
+  Model settings.
+- **Model settings** (Settings > AI model): the same as on the computer. **How it writes** covers temperature, top P,
+  top K, repeat penalty, longest answer and thinking, saved per model. **How it loads** covers context length, GPU
+  layers, flash attention, KV cache, GPU split sliders and draft (MTP) tuning, with RulZ's memory estimate as you
+  change them; saving restarts a loaded model. This needs RulZ Coding Agent 0.8.0 on the computer, and the GPU split,
+  draft tuning and estimate need RulZ LLM Suite 0.3.7.
 - **Settings**: the AI model, approval level, instructions and extra tools (these change the computer's settings);
   this phone's look and name; switch or forget computers. The RulZ LLM Suite address and API key, and phone access
   itself, can only be changed on the computer.
