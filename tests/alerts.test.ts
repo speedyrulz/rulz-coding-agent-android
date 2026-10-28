@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { AgentEvent, TaskRecord, TimelineItem } from '../src/shared/types'
-import { alertFor, DEFAULT_ALERT_PREFS, plainText, WAITING_ID, type AlertContext } from '../src/lib/alerts'
+import { alertFor, DEFAULT_ALERT_PREFS, plainText, statusLine, WAITING_ID, type AlertContext } from '../src/lib/alerts'
 
 const task = (outcome: TaskRecord['outcome']): TaskRecord => ({ id: 't1', title: 'Make a hello page', startedAt: 0, outcome, steps: [], files: [] })
 const timeline: TimelineItem[] = [
@@ -52,6 +52,20 @@ describe('notifications', () => {
     expect(alertFor({ type: 'task-end', projectPath: p, task: task('done') }, ctx({ prefs: off }))).toEqual([{ kind: 'cancel', id: WAITING_ID }])
     expect(alertFor({ type: 'prompt', projectPath: p, prompt: { id: '1', kind: 'question', question: 'q' } }, ctx({ prefs: off }))).toEqual([])
     expect(alertFor({ type: 'delta', projectPath: p, itemId: 'a', text: 'x' }, ctx())).toEqual([])
+  })
+
+  it('shows what the agent is doing in the ongoing notification', () => {
+    const base = { computer: 'jeff-ai', link: 'connected' as const, project: 'Phone Test', running: false, prompt: null }
+    expect(statusLine(base)).toEqual({ title: 'Connected to jeff-ai', text: 'Nothing running. You’ll get a notification when a task finishes or needs you.' })
+    expect(statusLine({ ...base, running: true, task: 'Make a hello page', doing: 'Creating your page' })).toEqual({
+      title: 'Working on “Make a hello page”',
+      text: 'Creating your page'
+    })
+    expect(
+      statusLine({ ...base, running: true, prompt: { id: '1', kind: 'approval', action: 'Run `npm install`', why: '', detail: '' } })
+    ).toEqual({ title: 'Waiting for your OK · Phone Test', text: 'Run npm install' })
+    expect(statusLine({ ...base, link: 'connecting' }).title).toBe('Reconnecting to jeff-ai…')
+    expect(statusLine({ ...base, link: 'stopped' }).title).toBe('Not connected to jeff-ai')
   })
 
   it('turns markdown into one line', () => {

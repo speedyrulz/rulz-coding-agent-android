@@ -31,7 +31,7 @@ export async function openInBrowser(url: string): Promise<void> {
   else window.open(url, '_blank', 'noopener')
 }
 
-/** Calls `fn` with each pairing link the phone opens the app with (QR code scanned by the camera). */
+/** Calls `fn` with each link the phone opens the app with: pairing links (QR code) and tapped notifications. */
 export function onPairingLink(fn: (url: string) => void): void {
   if (!isNative) {
     const q = new URLSearchParams(location.search).get('pair')

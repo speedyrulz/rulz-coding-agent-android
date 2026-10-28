@@ -1,4 +1,4 @@
-import type { AgentEvent, TimelineItem } from '@shared/types'
+import type { AgentEvent, PendingPrompt, TimelineItem } from '@shared/types'
 
 // Which agent events become phone notifications. Kept free of the phone's plugins so it can be tested.
 
@@ -45,6 +45,31 @@ export function plainText(md: string): string {
     .replace(/[*_~#>]+/g, '')
     .replace(/\s+/g, ' ')
     .trim()
+}
+
+export interface StatusInput {
+  computer: string
+  link: 'connected' | 'connecting' | 'stopped'
+  project?: string
+  running: boolean
+  /** The running task's title. */
+  task?: string
+  /** What the agent says it is doing ("Installing the pieces your app needs"). */
+  doing?: string
+  prompt: PendingPrompt | null
+}
+
+/** What the ongoing notification says: what the agent is doing right now. */
+export function statusLine(s: StatusInput): { title: string; text: string } {
+  if (s.link === 'connecting') return { title: `Reconnecting to ${s.computer}…`, text: 'I keep trying. Notifications resume once connected.' }
+  if (s.link === 'stopped') return { title: `Not connected to ${s.computer}`, text: 'Open the app to see why.' }
+  const where = s.project ? ` · ${s.project}` : ''
+  const p = s.prompt
+  if (p?.kind === 'approval') return { title: `Waiting for your OK${where}`, text: clip(plainText(p.action), 200) }
+  if (p?.kind === 'question') return { title: `Question for you${where}`, text: clip(plainText(p.question), 200) }
+  if (p?.kind === 'stuck') return { title: `Paused${where}`, text: clip(plainText(p.message), 200) }
+  if (s.running) return { title: `Working on “${clip(s.task ?? 'your task', 50)}”`, text: clip(s.doing || 'Working…', 200) }
+  return { title: `Connected to ${s.computer}`, text: 'Nothing running. You’ll get a notification when a task finishes or needs you.' }
 }
 
 export function alertFor(e: AgentEvent, ctx: AlertContext): AlertAction[] {

@@ -1,9 +1,14 @@
 package com.rulz.codingagent.android;
 
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Build;
+import android.os.PowerManager;
 import android.provider.Settings;
+import androidx.core.app.NotificationCompat;
+import androidx.core.app.NotificationManagerCompat;
 import androidx.core.content.ContextCompat;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
@@ -11,11 +16,20 @@ import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 
-/** Starts and stops ConnectionService from the app, and opens the Android settings pages notifications depend on. */
+/**
+ * The background connection (ConnectionService), the app's notifications, and the Android settings
+ * pages they depend on. Notifications are posted here directly: they must work while the app is in
+ * the background, where nothing may be asked of the owner first.
+ */
 @CapacitorPlugin(name = "KeepAlive")
 public class KeepAlivePlugin extends Plugin {
 
-    /** Starts (or updates) the background connection: { title, text }. */
+    @Override
+    public void load() {
+        ConnectionService.createChannels(getContext());
+    }
+
+    /** Starts the background connection: { title, text }. Only allowed while the app is on screen. */
     @PluginMethod
     public void start(PluginCall call) {
         Intent intent = new Intent(getContext(), ConnectionService.class)
@@ -30,7 +44,16 @@ public class KeepAlivePlugin extends Plugin {
         }
     }
 
-    /** { busy }: a task is running on the computer. Works while the app is in the background. */
+    /** Changes what the ongoing notification says: { title, text }. Works in the background. */
+    @PluginMethod
+    public void update(PluginCall call) {
+        boolean running = ConnectionService.update(getContext(), call.getString("title", ""), call.getString("text", ""));
+        JSObject result = new JSObject();
+        result.put("running", running);
+        call.resolve(result);
+    }
+
+    /** { busy }: a task is running on the computer. Works in the background. */
     @PluginMethod
     public void setBusy(PluginCall call) {
         ConnectionService.setBusy(Boolean.TRUE.equals(call.getBoolean("busy", false)));
@@ -43,10 +66,72 @@ public class KeepAlivePlugin extends Plugin {
         call.resolve();
     }
 
+    /** Shows a notification now: { id, channel: 'waiting' | 'finished', title, body }. */
+    @PluginMethod
+    public void notify(PluginCall call) {
+        String problem = notificationProblem(call.getString("channel", ConnectionService.CHANNEL_FINISHED));
+        if (problem != null) {
+            call.reject(problem);
+            return;
+        }
+        int id = call.getInt("id", 0);
+        String channel = call.getString("channel", ConnectionService.CHANNEL_FINISHED);
+        boolean waiting = ConnectionService.CHANNEL_WAITING.equals(channel);
+        String body = call.getString("body", "");
+        NotificationCompat.Builder b = new NotificationCompat.Builder(getContext(), channel)
+            .setSmallIcon(R.drawable.ic_stat_rulz)
+            .setColor(0xFFED000D)
+            .setContentTitle(call.getString("title", ""))
+            .setContentText(body)
+            .setStyle(new NotificationCompat.BigTextStyle().bigText(body))
+            .setContentIntent(ConnectionService.openApp(getContext(), "project", id))
+            .setAutoCancel(true)
+            .setPriority(waiting ? NotificationCompat.PRIORITY_HIGH : NotificationCompat.PRIORITY_DEFAULT)
+            .setCategory(waiting ? NotificationCompat.CATEGORY_REMINDER : NotificationCompat.CATEGORY_STATUS);
+        try {
+            NotificationManagerCompat.from(getContext()).notify(id, b.build());
+            call.resolve();
+        } catch (SecurityException e) {
+            call.reject("Android didn't allow the notification: " + e.getMessage());
+        }
+    }
+
+    /** { id } */
+    @PluginMethod
+    public void cancel(PluginCall call) {
+        NotificationManagerCompat.from(getContext()).cancel(call.getInt("id", 0));
+        call.resolve();
+    }
+
+    /** { allowed, problem }: whether notifications can show at all, and if not, why. */
+    @PluginMethod
+    public void notificationStatus(PluginCall call) {
+        String problem = notificationProblem(ConnectionService.CHANNEL_WAITING);
+        if (problem == null) problem = notificationProblem(ConnectionService.CHANNEL_FINISHED);
+        JSObject result = new JSObject();
+        result.put("allowed", NotificationManagerCompat.from(getContext()).areNotificationsEnabled());
+        result.put("problem", problem);
+        call.resolve(result);
+    }
+
+    /** Why a notification on this channel wouldn't show, in plain words, or null. */
+    private String notificationProblem(String channelId) {
+        if (!NotificationManagerCompat.from(getContext()).areNotificationsEnabled()) {
+            return "Notifications are turned off for RulZ Agent in Android's settings.";
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationChannel channel = getContext().getSystemService(NotificationManager.class).getNotificationChannel(channelId);
+            if (channel != null && channel.getImportance() == NotificationManager.IMPORTANCE_NONE) {
+                return "\"" + channel.getName() + "\" notifications are turned off in Android's settings.";
+            }
+        }
+        return null;
+    }
+
     /** Whether Android lets the app run without battery limits. */
     @PluginMethod
     public void batteryStatus(PluginCall call) {
-        android.os.PowerManager pm = (android.os.PowerManager) getContext().getSystemService(android.content.Context.POWER_SERVICE);
+        PowerManager pm = (PowerManager) getContext().getSystemService(android.content.Context.POWER_SERVICE);
         JSObject result = new JSObject();
         result.put("unrestricted", pm.isIgnoringBatteryOptimizations(getContext().getPackageName()));
         call.resolve(result);

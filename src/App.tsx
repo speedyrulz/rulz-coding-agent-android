@@ -34,6 +34,14 @@ function start(askToPair: (c: Omit<Computer, 'id'>) => void): void {
   })
   onResume(() => void link.check())
   onPairingLink((url) => {
+    // A tapped notification (rulzagent://open/project): go to the project; a pending approval shows itself.
+    if (/^rulzagent:\/\/open\b/i.test(url)) {
+      if (useWorkspace.getState().project) {
+        useUi.getState().go('workspace')
+        useUi.getState().setTab('chat')
+      }
+      return
+    }
     const parsed = parsePairingLink(url)
     if (parsed) askToPair(parsed)
   })
