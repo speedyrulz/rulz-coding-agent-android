@@ -327,6 +327,8 @@ function Conversation() {
             )
           }
           if (item.kind === 'assistant') {
+            // A reply that was only thinking (the computer shows that; the phone doesn't yet).
+            if (!item.text) return null
             return (
               <div key={item.id} className="flex gap-2.5">
                 <span className="mt-1 w-5 shrink-0">

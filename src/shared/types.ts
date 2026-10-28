@@ -109,6 +109,18 @@ export interface LoadSettings {
   draftGpu?: 'auto' | 'gpu' | 'cpu'
   draftCacheTypeK?: KvCacheType
   draftCacheTypeV?: KvCacheType
+  /** Which draft: null = automatic, 'builtin' = the model's own MTP layers, or a DraftChoice id.
+   *  Missing from RulZ LLM Suite before 0.3.9. */
+  draftFile?: string | null
+}
+
+/** A draft RulZ LLM Suite can use for a model: its built-in MTP layers or a draft file in the models folder. */
+export interface DraftChoice {
+  id: string
+  name: string
+  folder: string
+  kind: string
+  builtIn: boolean
 }
 
 export interface GpuInfo {
@@ -136,6 +148,10 @@ export interface ModelLoadInfo {
   loadedContext?: number
   /** Whether the model comes with a draft (MTP) head; undefined when RulZ doesn't say. */
   hasDraft?: boolean
+  /** What the automatic choice uses; null = nothing found. Undefined before RulZ LLM Suite 0.3.9. */
+  defaultDraft?: { name: string; builtIn: boolean } | null
+  /** Drafts that can be picked; undefined before RulZ LLM Suite 0.3.9. */
+  draftChoices?: DraftChoice[]
   gpus: GpuInfo[]
   estimate?: LoadEstimate
 }
@@ -178,7 +194,7 @@ export interface ChangedFile {
 
 export type TimelineItem =
   | { id: string; kind: 'user'; text: string; taskId: string }
-  | { id: string; kind: 'assistant'; text: string; taskId: string }
+  | { id: string; kind: 'assistant'; text: string; taskId: string; /** The model's thinking before this reply, when it sent any. */ reasoning?: string }
   | {
       id: string
       kind: 'notice'
@@ -279,6 +295,7 @@ export type AgentEvent =
   | { type: 'status'; projectPath: string; status: AgentStatus }
   | { type: 'item'; projectPath: string; item: TimelineItem }
   | { type: 'delta'; projectPath: string; itemId: string; text: string }
+  | { type: 'reasoning'; projectPath: string; itemId: string; text: string }
   | { type: 'step'; projectPath: string; step: Step }
   | { type: 'output'; projectPath: string; stepId: string; chunk: string }
   | { type: 'files'; projectPath: string; taskId: string; files: ChangedFile[] }
