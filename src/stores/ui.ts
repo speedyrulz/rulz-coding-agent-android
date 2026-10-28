@@ -11,6 +11,9 @@ interface UiState {
   go: (view: View) => void
   back: () => void
   setTab: (tab: Tab) => void
+  /** Settings shows Model settings expanded (opened from the model sheet). */
+  modelSettingsOpen: boolean
+  setModelSettingsOpen: (open: boolean) => void
 }
 
 export const useUi = create<UiState>((set, get) => ({
@@ -19,5 +22,7 @@ export const useUi = create<UiState>((set, get) => ({
   tab: 'chat',
   go: (view) => set((s) => ({ view, previous: view === 'settings' ? s.view : s.previous, tab: view === 'workspace' && s.view !== 'workspace' ? 'chat' : s.tab })),
   back: () => set({ view: get().view === 'settings' ? get().previous : 'projects' }),
-  setTab: (tab) => set({ tab })
+  setTab: (tab) => set({ tab }),
+  modelSettingsOpen: false,
+  setModelSettingsOpen: (modelSettingsOpen) => set({ modelSettingsOpen })
 }))

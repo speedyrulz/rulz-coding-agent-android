@@ -4,9 +4,10 @@ import { MAX_INSTRUCTION_CHARS } from '@shared/defaults'
 import type { Theme, ToolServersInfo } from '@shared/types'
 import { ApprovalChooser, ModelSelect } from '../components/common'
 import { FolderPicker } from '../components/FolderPicker'
+import { ModelSettings } from '../components/ModelSettings'
 import { Button, Field, IconButton, Input, Switch, Textarea, TopBar } from '../components/ui'
 import { invoke, on } from '../lib/api'
-import { cn } from '../lib/format'
+import { cn, relativeTime } from '../lib/format'
 import { isNative } from '../lib/native'
 import { useAlerts } from '../stores/alerts'
 import { activeModelId, useApp } from '../stores/app'
@@ -88,6 +89,8 @@ function Notifications() {
   const openNotificationSettings = useAlerts((s) => s.openNotificationSettings)
   const openBatterySettings = useAlerts((s) => s.openBatterySettings)
   const refreshStatus = useAlerts((s) => s.refreshStatus)
+  const problem = useAlerts((s) => s.problem)
+  const last = useAlerts((s) => s.last)
   useEffect(() => void refreshStatus(), [refreshStatus])
   const any = prefs.finished || prefs.waiting
 
@@ -104,9 +107,9 @@ function Notifications() {
           <Switch checked={prefs.background} disabled={!any} onCheckedChange={(background) => void setPrefs({ background })} label="Stay connected in the background" />
         </Field>
       )}
-      {any && permission === 'denied' && (
+      {any && (permission === 'denied' || problem) && (
         <div className="space-y-2 rounded-lg border border-warn/40 bg-warn/10 p-3 text-[14px] text-warn">
-          <p>Notifications are turned off for RulZ Agent in Android's settings.</p>
+          <p>{problem || "Notifications are turned off for RulZ Agent in Android's settings."}</p>
           {isNative && (
             <Button size="sm" onClick={openNotificationSettings}>
               Open notification settings
@@ -129,6 +132,12 @@ function Notifications() {
           Send a test notification
         </Button>
       )}
+      {last && (
+        <p className={cn('text-[12px]', last.error ? 'text-danger' : 'text-faint')}>
+          Last notification: “{last.title}”, {relativeTime(last.at)}
+          {last.error ? `, didn't show: ${last.error}` : '.'}
+        </p>
+      )}
     </Section>
   )
 }
@@ -148,6 +157,9 @@ export function Settings() {
   const remove = useLink((s) => s.remove)
   const [details, setDetails] = useState(false)
   const [picker, setPicker] = useState(false)
+  const modelSettingsOpen = useUi((s) => s.modelSettingsOpen)
+  const setModelSettingsOpen = useUi((s) => s.setModelSettingsOpen)
+  const modelId = activeModelId(settings, connection)
 
   return (
     <div className="flex h-full flex-col">
@@ -162,7 +174,17 @@ export function Settings() {
           <Section title={`On ${computer?.name ?? 'the computer'}`} hint="These change RulZ Coding Agent on the computer too.">
             <Field label="AI model" hint="Models marked “ready” start right away">
               {connection.models.length ? (
-                <ModelSelect models={connection.models} value={activeModelId(settings, connection)} onChange={(model) => void update({ model })} />
+                <>
+                  <ModelSelect models={connection.models} value={modelId} onChange={(model) => void update({ model })} />
+                  {modelId && (
+                    <>
+                      <button className="flex items-center gap-1 py-1 text-[14px] text-muted" onClick={() => setModelSettingsOpen(!modelSettingsOpen)}>
+                        <ChevronDown size={16} className={cn('transition-transform', !modelSettingsOpen && '-rotate-90')} /> Model settings
+                      </button>
+                      {modelSettingsOpen && <ModelSettings model={modelId} />}
+                    </>
+                  )}
+                </>
               ) : (
                 <p className="text-[14px] text-muted">The computer isn't connected to RulZ LLM Suite, so there are no models to choose from.</p>
               )}

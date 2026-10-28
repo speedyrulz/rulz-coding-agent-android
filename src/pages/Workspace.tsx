@@ -1,4 +1,4 @@
-import { ArrowLeft, ArrowUp, EllipsisVertical, History, LoaderCircle, NotebookPen, Package, Play, Settings, Square, Undo2 } from 'lucide-react'
+import { ArrowLeft, ArrowUp, Check, ChevronDown, EllipsisVertical, SlidersHorizontal, History, LoaderCircle, NotebookPen, Package, Play, Settings, Square, Undo2 } from 'lucide-react'
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { modelLabel } from '../components/common'
 import { LogoMark } from '../components/Logo'
@@ -74,7 +74,53 @@ function Header() {
   )
 }
 
+/** Quick switch: the models on the computer, ready ones first, and a way to their settings. */
+function ModelSheet({ open, onOpenChange, current }: { open: boolean; onOpenChange: (open: boolean) => void; current: string }) {
+  const models = useApp((s) => s.connection.models)
+  const update = useApp((s) => s.updateSettings)
+  const running = useWorkspace((s) => s.running)
+  const go = useUi((s) => s.go)
+  const setModelSettingsOpen = useUi((s) => s.setModelSettingsOpen)
+  const sorted = [...models].sort((a, b) => Number(b.loaded) - Number(a.loaded) || a.id.localeCompare(b.id))
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange} title="AI model" description={running ? 'You can switch once the task is done.' : undefined}>
+      <div className="pb-2">
+        {sorted.map((m) => (
+          <button
+            key={m.id}
+            className="flex w-full items-center gap-3 px-5 py-3.5 text-left text-[16px] active:bg-hover disabled:opacity-40"
+            disabled={running}
+            onClick={() => {
+              onOpenChange(false)
+              if (m.id !== current) void update({ model: m.id })
+            }}
+          >
+            <Check size={18} className={m.id === current ? 'text-accent' : 'invisible'} />
+            <span className="min-w-0">
+              <span className="block truncate">{modelLabel(m.id)}</span>
+              {m.loaded && <span className="block text-[12px] text-ok">Ready{m.loadedContext ? `, ${formatTokens(m.loadedContext)} context` : ''}</span>}
+            </span>
+          </button>
+        ))}
+        {!sorted.length && <p className="px-5 py-3 text-[14px] text-muted">The computer isn't connected to RulZ LLM Suite, so there are no models to choose from.</p>}
+        <button
+          className="flex w-full items-center gap-3 border-t border-border px-5 py-3.5 text-left text-[16px] active:bg-hover"
+          onClick={() => {
+            onOpenChange(false)
+            setModelSettingsOpen(true)
+            go('settings')
+          }}
+        >
+          <SlidersHorizontal size={18} className="text-muted" />
+          Model settings
+        </button>
+      </div>
+    </Sheet>
+  )
+}
+
 function ModelLine() {
+  const [open, setOpen] = useState(false)
   const settings = useApp((s) => s.settings)
   const connection = useApp((s) => s.connection)
   const activity = useApp((s) => s.activity)
@@ -87,15 +133,19 @@ function ModelLine() {
   else if (model?.loaded) dot = <span className="size-1.5 shrink-0 rounded-full bg-ok" />
   const pct = context?.size ? Math.round(Math.min(1, context.used / context.size) * 100) : null
   return (
-    <div className="flex min-w-0 items-center gap-1.5 text-[12px] text-faint">
-      {dot}
-      <span className="truncate">{id ? modelLabel(id) : 'No model'}</span>
-      {pct !== null && (
-        <span className={cn('shrink-0', pct >= 85 ? 'text-danger' : pct >= 60 && 'text-warn')}>
-          · memory {pct}% of {formatTokens(context!.size)}
-        </span>
-      )}
-    </div>
+    <>
+      <button aria-label="Change the AI model" className="flex max-w-full min-w-0 items-center gap-1.5 text-left text-[12px] text-faint" onClick={() => setOpen(true)}>
+        {dot}
+        <span className="truncate">{id ? modelLabel(id) : 'No model'}</span>
+        <ChevronDown size={12} className="shrink-0" />
+        {pct !== null && (
+          <span className={cn('shrink-0', pct >= 85 ? 'text-danger' : pct >= 60 && 'text-warn')}>
+            · memory {pct}% of {formatTokens(context!.size)}
+          </span>
+        )}
+      </button>
+      <ModelSheet open={open} onOpenChange={setOpen} current={id} />
+    </>
   )
 }
 

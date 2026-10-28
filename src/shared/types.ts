@@ -13,6 +13,8 @@ export interface AppSettings {
   apiKey: string
   /** Model id from /v1/models; empty = pick one automatically. */
   model: string
+  /** Generation settings the owner changed, per model id; anything left out uses the recommended value. */
+  modelSampling: Record<string, SamplingSettings>
   approval: ApprovalLevel
   maxSteps: number
   /** Default time limit for one command, in minutes. */
@@ -29,6 +31,26 @@ export interface AppSettings {
   /** Secret the phone sends to connect; made the first time phone access is turned on. */
   remoteToken: string
 }
+
+/** How the model writes its answers. Missing = the recommended value for that model. */
+export interface SamplingSettings {
+  temperature?: number
+  topP?: number
+  topK?: number
+  repeatPenalty?: number
+  /** Longest single answer, in tokens. */
+  maxOutputTokens?: number
+  /** Turn the template's thinking on or off; missing = the model's default. */
+  thinking?: 'on' | 'off'
+  /** For templates that take one (reasoning_effort); missing = the template's own. */
+  reasoningEffort?: ReasoningEffort
+  /** Most tokens to spend thinking before the answer is forced; 0 = skip thinking. */
+  thinkingBudget?: number
+  /** Text added when the thinking budget runs out, e.g. "Time to answer." */
+  thinkingBudgetMessage?: string
+}
+
+export type ReasoningEffort = 'minimal' | 'low' | 'medium' | 'high' | 'xhigh' | 'max'
 
 // ---------- Connection to RulZ LLM Suite ----------
 
@@ -60,6 +82,62 @@ export interface ConnectionInfo {
   models: ModelInfo[]
   /** Address of the non-RulZ server that answered, for the "other-server" explanation. */
   otherUrl?: string
+}
+
+export type KvCacheType = 'f16' | 'bf16' | 'f32' | 'q8_0' | 'q5_1' | 'q5_0' | 'q4_1' | 'q4_0' | 'iq4_nl'
+
+/** The load settings RulZ LLM Suite lets other apps change (GET/POST /v1/models/{id}/load-config). */
+export interface LoadSettings {
+  /** null = as much as fits in memory. */
+  contextLength: number | null
+  gpuLayers: 'auto' | 'all' | number
+  flashAttention: 'auto' | 'on' | 'off'
+  cacheTypeK: KvCacheType
+  cacheTypeV: KvCacheType
+  parallel: number
+  /** GPU split; missing from RulZ LLM Suite before 0.3.7. */
+  splitMode?: 'auto' | 'single' | 'custom'
+  mainGpu?: number
+  /** Proportions per GPU when splitMode is 'custom', e.g. "60,40". */
+  tensorSplit?: string
+  useDraft: boolean
+  /** Draft (MTP) tuning; missing from RulZ LLM Suite before 0.3.7. null = llama.cpp's default. */
+  draftTokens?: number | null
+  draftMinTokens?: number | null
+  draftPMin?: number | null
+  draftSampling?: 'auto' | 'greedy' | 'probabilistic'
+  draftGpu?: 'auto' | 'gpu' | 'cpu'
+  draftCacheTypeK?: KvCacheType
+  draftCacheTypeV?: KvCacheType
+}
+
+export interface GpuInfo {
+  index: number
+  name: string
+  memUsedMiB: number
+  memTotalMiB: number
+}
+
+/** RulZ LLM Suite's memory estimate for a load config. */
+export interface LoadEstimate {
+  gpuBytes: number
+  totalBytes: number
+  verdict: 'fits' | 'partial' | 'tight' | 'unknown'
+  perGpu: { index: number; name: string; share: number; bytes: number; freeBytes: number; totalBytes: number }[]
+}
+
+export interface ModelLoadInfo {
+  /** What the model loads with next time. */
+  config: LoadSettings
+  /** False while the model still uses RulZ LLM Suite's general defaults. */
+  custom: boolean
+  maxContext?: number
+  state: 'not-loaded' | 'loading' | 'ready' | 'stopping' | 'error'
+  loadedContext?: number
+  /** Whether the model comes with a draft (MTP) head; undefined when RulZ doesn't say. */
+  hasDraft?: boolean
+  gpus: GpuInfo[]
+  estimate?: LoadEstimate
 }
 
 /** What the model is doing right now, for the top bar. */
