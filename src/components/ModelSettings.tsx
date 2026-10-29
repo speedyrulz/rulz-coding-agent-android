@@ -119,7 +119,17 @@ function Sampling({ model }: { model: string }) {
             ))}
           </Select>
         </Field>
-        <Field label="Thinking budget" hint="Tokens before it must answer. Empty = no limit, 0 = skip thinking." inline>
+        <Field
+          label="Thinking budget"
+          hint={
+            own.thinkingBudget === 0 && !thinkingOff ? (
+              <span className="text-warn">0 skips thinking, so no thoughts will show. Clear it for no limit.</span>
+            ) : (
+              'Tokens before it must answer. Empty = no limit, 0 = skip thinking.'
+            )
+          }
+          inline
+        >
           <NumberBox
             label="Thinking budget"
             value={thinkingOff ? null : (own.thinkingBudget ?? null)}
