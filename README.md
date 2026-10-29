@@ -24,10 +24,16 @@ The app remembers the computer and reconnects by itself, also after the phone sl
   computer's folders with **Open folder**. The computer has one open project at a time, so opening one here opens it
   there too, and the computer's window follows.
 - **Chat**: what you asked and what the agent says, live. Type the next task and press the arrow; the red square stops
-  the task. Questions from the agent and "I'm stuck" pauses show here as on the computer.
+  the task. Questions from the agent and "I'm stuck" pauses show here as on the computer. The model's thoughts show
+  live in a **Thinking…** box above its reply, which folds away into **Thought process** when the answer starts (tap it
+  to open or close); turn on **Keep thinking open after the answer** in Settings to leave it open. When thinking is off
+  or its budget is 0 in Model settings, the status says so instead. Thoughts need RulZ Coding Agent 0.10.0 on the
+  computer, and keeping them open needs 0.11.0.
 - **Is this OK?**: approval requests come up as a sheet over whatever you're looking at. **Allow**, **Allow for this
   task** or **Don't allow**; the back button leaves the app rather than refusing by accident.
-- **Steps** and **Files**: each step with its command and output, and each changed file as a diff.
+- **Steps** and **Files**: each step with its command and output, and each changed file as a diff. When the task used
+  a draft model (MTP), **Drafts** above the steps shows how many drafted tokens the model accepted and the time that
+  saved; tap it for the counts (needs RulZ Coding Agent 0.10.0).
 - **App**: **Run my app** on the computer and watch its output; **Fix this** when it crashes. For web apps, **Open on
   this phone** opens the address with the computer's Tailscale address (the dev server must accept outside visits:
   `--host` for Vite).
@@ -43,12 +49,13 @@ The app remembers the computer and reconnects by itself, also after the phone sl
 - **Model quick switch**: tap the model under the project name to switch models (not during a task), with a shortcut to
   Model settings.
 - **Model settings** (Settings > AI model): the same as on the computer. **How it writes** covers temperature, top P,
-  top K, repeat penalty, longest answer and thinking, saved per model. **How it loads** covers context length, GPU
+  top K, repeat penalty, longest answer and thinking (with a warning that a budget of 0 skips thinking), saved per model. **How it loads** covers context length, GPU
   layers, flash attention, KV cache, GPU split sliders, the draft model (automatic, built-in MTP layers or any draft
   file in RulZ's models folder) and draft (MTP) tuning, with RulZ's memory estimate as you change them; saving
   restarts a loaded model. This needs RulZ Coding Agent 0.8.0 on the computer; the GPU split, draft tuning and
   estimate need RulZ LLM Suite 0.3.7, and the draft model choice needs RulZ Coding Agent 0.9.2 and RulZ LLM Suite 0.3.9.
-- **Settings**: the AI model, approval level, instructions and extra tools (these change the computer's settings);
+- **Settings**: the AI model, keeping thinking open, approval level, instructions and extra tools (these change the
+  computer's settings);
   this phone's look and name; switch or forget computers. The RulZ LLM Suite address and API key, and phone access
   itself, can only be changed on the computer.
 
@@ -77,7 +84,8 @@ computer → phone   { t: 'welcome', protocol, version, name }  |  { t: 'denied'
                    { t: 'event', channel, payload }
 ```
 
-`src/shared/` is copied from the desktop app (`npm run sync-shared`); `protocol` tells the two apps apart when they
+`src/shared/` is copied from the desktop app (`npm run sync-shared`, which looks for it in
+`../RulZ AI Tools Suite/apps/rulz-coding-agent`); `protocol` tells the two apps apart when they
 don't match.
 
 The app is React, Tailwind and zustand (like the desktop app) in a [Capacitor](https://capacitorjs.com) shell.

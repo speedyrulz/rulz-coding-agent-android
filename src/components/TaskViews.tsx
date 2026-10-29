@@ -1,8 +1,9 @@
-import { Ban, Check, ChevronRight, Circle, FileMinus, FilePen, FilePlus, Hourglass, LoaderCircle, Minus, X } from 'lucide-react'
+import { Ban, Check, ChevronRight, Circle, Gauge, FileMinus, FilePen, FilePlus, Hourglass, LoaderCircle, Minus, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { diffLines, withContext } from '@shared/diff'
 import type { ChangedFile, FileDiff, Step, TaskRecord } from '@shared/types'
 import { errorMessage, invoke } from '../lib/api'
+import { draftSummary } from '../lib/drafts'
 import { cn } from '../lib/format'
 import { shownTask, useWorkspace } from '../stores/workspace'
 import { Badge, Select, Sheet } from './ui'
@@ -24,6 +25,39 @@ export function TaskPicker() {
           </option>
         ))}
       </Select>
+    </div>
+  )
+}
+
+/** Speculative decoding (MTP / draft model) in the shown task: how many guesses the model kept, and the time that saved. Tap for the counts. */
+export function DraftReadout() {
+  const tasks = useWorkspace((s) => s.tasks)
+  const selected = useWorkspace((s) => s.selectedTaskId)
+  const [open, setOpen] = useState(false)
+  const summary = draftSummary(shownTask(tasks, selected)?.draft)
+  if (!summary) return null
+  return (
+    <div className="px-4 pt-2 text-[13px] text-faint">
+      <button
+        type="button"
+        className="flex items-center gap-1.5 tabular-nums"
+        onClick={() => setOpen(!open)}
+        aria-expanded={open}
+        aria-label={`Drafts ${summary.rate}% accepted, ${summary.saved}`}
+      >
+        <Gauge size={14} />
+        <span>Drafts</span>
+        <span>
+          {summary.rate}% · {summary.saved}
+        </span>
+        <ChevronRight size={13} className={cn('transition-transform', open && 'rotate-90')} />
+      </button>
+      {open && (
+        <div className="mt-1.5 space-y-1 rounded-lg bg-panel-2 px-3 py-2 text-muted">
+          <p>Speculative decoding (MTP) in this task: {summary.detail}</p>
+          <p className="text-[12px] text-faint">{summary.how}</p>
+        </div>
+      )}
     </div>
   )
 }

@@ -1,11 +1,12 @@
-import { ArrowLeft, ArrowUp, Check, ChevronDown, EllipsisVertical, SlidersHorizontal, History, LoaderCircle, NotebookPen, Package, Play, Settings, Square, Undo2 } from 'lucide-react'
+import { ArrowLeft, ArrowUp, Brain, Check, ChevronDown, ChevronRight, EllipsisVertical, SlidersHorizontal, History, LoaderCircle, NotebookPen, Package, Play, Settings, Square, Undo2 } from 'lucide-react'
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
+import { splitThink, thinkingOpen } from '@shared/think'
 import { modelLabel } from '../components/common'
 import { LogoMark } from '../components/Logo'
 import { Markdown } from '../components/Markdown'
 import { HistorySheet, NotesSheet } from '../components/ProjectSheets'
 import { RunView } from '../components/RunView'
-import { FileCount, FileList, StepList, TaskPicker } from '../components/TaskViews'
+import { DraftReadout, FileCount, FileList, StepList, TaskPicker } from '../components/TaskViews'
 import { Button, IconButton, Sheet, Textarea, TopBar } from '../components/ui'
 import { cn, formatTokens } from '../lib/format'
 import { activeModelId, useApp } from '../stores/app'
@@ -36,6 +37,7 @@ export function Workspace() {
             {tab === 'steps' && (
               <>
                 <TaskPicker />
+                <DraftReadout />
                 <StepList />
               </>
             )}
@@ -308,6 +310,11 @@ function Conversation() {
 
   if (!timeline.length && !running) return <EmptyState />
 
+  // Once thoughts stream in, their own box replaces the "Thinking…" line.
+  const last = timeline[timeline.length - 1]
+  const thoughtsShown =
+    running && status.phase === 'thinking' && last?.kind === 'assistant' && !!(last.reasoning || splitThink(last.text).reasoning)
+
   return (
     <div
       ref={ref}
@@ -327,14 +334,19 @@ function Conversation() {
             )
           }
           if (item.kind === 'assistant') {
-            // A reply that was only thinking (the computer shows that; the phone doesn't yet).
-            if (!item.text) return null
+            const inline = splitThink(item.text)
+            const reasoning = [item.reasoning?.trim(), inline.reasoning].filter(Boolean).join('\n\n')
+            if (!reasoning && !inline.answer) return null
+            const live = running && status.phase === 'thinking' && !inline.answer && item.id === last.id
             return (
               <div key={item.id} className="flex gap-2.5">
                 <span className="mt-1 w-5 shrink-0">
                   <LogoMark className="w-5" />
                 </span>
-                <Markdown text={item.text} className="min-w-0 flex-1 text-[15px]" />
+                <div className="min-w-0 flex-1 space-y-2">
+                  {reasoning && <ThinkingBox text={reasoning} live={live} />}
+                  {inline.answer && <Markdown text={inline.answer} className="text-[15px]" />}
+                </div>
               </div>
             )
           }
@@ -354,13 +366,40 @@ function Conversation() {
             </div>
           )
         })}
-        {running && status.phase !== 'idle' && (
+        {running && status.phase !== 'idle' && !thoughtsShown && (
           <div className="flex items-center gap-2.5 pl-7 text-[14px] text-muted">
             {status.phase === 'waiting' ? <span className="size-2 rounded-full bg-warn" /> : <LoaderCircle size={16} className="animate-spin text-accent" />}
             {status.text}
           </div>
         )}
       </div>
+    </div>
+  )
+}
+
+/** The model's thinking above a reply: open while it streams, folded away once the answer starts (unless the computer's setting keeps it open). */
+function ThinkingBox({ text, live }: { text: string; live: boolean }) {
+  const keepOpen = useApp((s) => s.settings?.keepThinkingOpen ?? false)
+  const [chosen, setChosen] = useState<boolean | null>(null)
+  const [wasLive, setWasLive] = useState(live)
+  if (live && !wasLive) setWasLive(true)
+  const open = thinkingOpen(chosen, live, wasLive, keepOpen)
+  const body = useRef<HTMLDivElement>(null)
+  useLayoutEffect(() => {
+    if (live && open && body.current) body.current.scrollTop = body.current.scrollHeight
+  }, [text, live, open])
+  return (
+    <div className="rounded-lg border border-border bg-panel-2/60 text-[14px]">
+      <button type="button" className="flex min-h-10 w-full items-center gap-2 px-3 py-2 text-left text-muted" onClick={() => setChosen(!open)} aria-expanded={open}>
+        <ChevronRight size={15} className={cn('shrink-0 transition-transform', open && 'rotate-90')} />
+        {live ? <LoaderCircle size={15} className="animate-spin text-accent" /> : <Brain size={15} />}
+        {live ? 'Thinking…' : 'Thought process'}
+      </button>
+      {open && (
+        <div ref={body} className="max-h-72 overflow-y-auto overscroll-contain border-t border-border px-3 py-2 whitespace-pre-wrap text-muted">
+          {text}
+        </div>
+      )}
     </div>
   )
 }
