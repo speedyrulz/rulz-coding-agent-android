@@ -1,5 +1,10 @@
 # RulZ Coding Agent for Android
 
+> **Moved.** This app now lives in [`apps/rulz-coding-agent-android`](https://github.com/speedyrulz/RulZ-AI-Tools-Suite/tree/main/apps/rulz-coding-agent-android)
+> of the [RulZ AI Tools Suite](https://github.com/speedyrulz/RulZ-AI-Tools-Suite) repository, and new versions are
+> released there (tagged `coding-agent-android-v<version>`). To install it, scan the QR code on the RulZ AI Tools Suite
+> launcher's home page with your phone; it always links to the newest APK. This repository is archived.
+
 Watch and control [RulZ Coding Agent](https://github.com/speedyrulz/rulz-coding-agent) on your computer from your
 Android phone. Give it tasks, answer its "Is this OK?" questions, follow its steps, look at the files it changed,
 run your app, undo, all from the phone, while the AI and your projects stay on the computer.
